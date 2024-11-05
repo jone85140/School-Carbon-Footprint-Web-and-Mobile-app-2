@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carbon Emission Calculator with Login</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            
+        }
+        .container, .calculator-container {
+            width: 900px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        h2, h3 {
+            color: #333;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .button {
+            padding: 10px 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+            margin: 10px 0;
+        }
+        .switch-button {
+            background-color: transparent;
+            color: #007bff;
+            cursor: pointer;
+            border: none;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container" id="authContainer">
+    <!-- Sign Up Screen -->
+    <div id="signUpScreen">
+        <h2>Sign Up</h2>
+        <input type="text" id="signUpUsername" placeholder="Username" required><br>
+        <input type="password" id="signUpPassword" placeholder="Password" required><br>
+        <button class="button" onclick="signUp()">Sign Up</button>
+        <button class="switch-button" onclick="showScreen('loginScreen')">Already have an account? Log in</button>
+    </div>
+
+    <!-- Login Screen -->
+    <div id="loginScreen" style="display:none;">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Username" required><br>
+        <input type="password" id="password" placeholder="Password" required><br>
+        <button class="button" onclick="login()">Login</button>
+        <button class="switch-button" onclick="showScreen('signUpScreen')">Don't have an account? Sign up</button>
+    </div>
+</div>
+
+<!-- Main Calculator Screen (hidden initially) -->
+<div class="calculator-container" id="calculatorContainer" style="display: none;">
+    <h2>Weekly Transport Carbon Emission Calculator</h2>
+<div>
+        <label for="schoolDropdown">Select School:</label>
+        <select id="schoolDropdown" onchange="loadSchoolData()">
+            <option value="">-- Select or Add New School --</option>
+        </select>
+        <input type="text" id="newSchoolName" placeholder="Enter new school name" />
+        <button onclick="addSchool()">Add School</button>
+              <label for="schoolName">Select School:</label>
+            <select id="schoolName">
+                <option value="G M M S School">G M M S School</option>
+                <option value="AL Hilal Vidayalaya,">AL Hilal Vidayalaya,</option>
+                <option value="Km/Al Kamaroon Vidyalayam">Km/Al Kamaroon Vidyalayam</option>
+                <option value="Zahira College,">Zahira College,</option>
+                <option value="KM/KM/AL-JALAL VIDYALAYAM">KM/KM/AL-JALAL VIDYALAYAM</option>
+                <option value="Riyalul Jannah Vidyalaya">Riyalul Jannah Vidyalaya</option>
+                <option value="KM/KM/MALHARUS SHAMS MAHA VIDYALAYA,">KM/KM/MALHARUS SHAMS MAHA VIDYALAYA,</option>
+                
+                <!-- Add more schools as needed -->
+            </select>
+        </div>
+
+
+       <label for="distances">Enter distances for each day :</label><br>
+    <input type="text" id="distances" placeholder="e.g. "><br><br>
+    <table>
+        <thead>
+            <tr>
+                <th>Day</th>
+                <th>Transport Mode</th>
+            </tr>
+        </thead>
+        <tbody id="inputRows">
+            <!-- Input rows will be dynamically generated here -->
+        </tbody>
+    </table>
+    <button class="button" onclick="calculateTotal()">Calculate Emissions</button>
+    <h3>Total Emission: <span id="totalEmission">0.00</span> kg CO2</h3>
+
+    <!-- Chart Section -->
+    <div style="width: 100%; margin: 20px 0;">
+        <canvas id="carbonChart"></canvas>
+    </div>
+</div>
+
+<script>
+    const cloudDB = { schools: {} };
+    const emissionFactors = { 'car': 0.95, 'bus': 9.2, 'foot': 0.0, 'motorbike': 0.57, 'van': 0.16, 'three-wheeler': 0.56 };
+    const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const inputRows = document.getElementById('inputRows');
+
+    // Initialize input rows
+    daysOfWeek.forEach((day, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${day}</td>
+            <td>
+                <select id="transport${index}">
+                    <option value="car">Car</option>
+                    <option value="bus">Bus</option>
+                    <option value="foot">By Foot</option>
+                    <option value="motorbike">Motorbike</option>
+                    <option value="van">Van</option>
+                    <option value="three-wheeler">Three-Wheeler</option>
+                </select>
+            </td>
+        `;
+        inputRows.appendChild(row);
+    });
+
+    function calculateTotal() {
+        let totalEmission = 0;
+        const distances = document.getElementById('distances').value.split(',').map(Number);
+
+        daysOfWeek.forEach((day, index) => {
+            const transport = document.getElementById(`transport${index}`).value;
+            const distance = distances[index] || 0;
+            if (!isNaN(distance) && emissionFactors[transport] !== undefined) {
+                totalEmission += distance * emissionFactors[transport];
+            }
+        });
+
+        document.getElementById('totalEmission').innerText = totalEmission.toFixed(2);
+        const schoolName = document.getElementById('schoolName').value;
+        saveToCloud(schoolName, totalEmission);
+        updateChart();
+    }
+
+    function saveToCloud(schoolName, totalEmission) {
+        cloudDB.schools[schoolName] = totalEmission;
+    }
+
+    const ctx = document.getElementById('carbonChart').getContext('2d');
+    let carbonChart;
+
+    function updateChart() {
+        const schoolNames = Object.keys(cloudDB.schools);
+        const emissions = Object.values(cloudDB.schools);
+
+        if (carbonChart) {
+            carbonChart.data.labels = schoolNames;
+            carbonChart.data.datasets[0].data = emissions;
+            carbonChart.update();
+        } else {
+            carbonChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: schoolNames,
+                    datasets: [{
+                        label: 'Carbon Emission (kg CO2)',
+                        data: emissions,
+                        backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                        borderColor: 'rgba(75, 192, 192, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+        }
+    }
+
+    function showScreen(screenId) {
+        document.getElementById('signUpScreen').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById(screenId).style.display = 'block';
+    }
+
+    function signUp() {
+        const username = document.getElementById('signUpUsername').value;
+        const password = document.getElementById('signUpPassword').value;
+        alert(`Account created for ${username}`);
+        showScreen('loginScreen');
+    }
+
+    function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        alert(`Logged in as ${username}`);
+        document.getElementById('authContainer').style.display = 'none';
+        document.getElementById('calculatorContainer').style.display = 'block';
+    }
+</script>
+
+</body>
+</html>
